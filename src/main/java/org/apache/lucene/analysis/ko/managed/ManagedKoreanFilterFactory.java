@@ -23,7 +23,7 @@ import java.util.Map;
 
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.ko.KoreanFilterFactory;
-import org.apache.lucene.analysis.ko.dictionary.ArirangResourceType;
+import org.apache.lucene.analysis.ko.dictionary.DictionaryType;
 import org.apache.lucene.analysis.ko.dictionary.Dictionary;
 import org.apache.lucene.analysis.ko.dictionary.DictionaryBuilder;
 import org.apache.lucene.analysis.util.ResourceLoader;
@@ -136,30 +136,30 @@ public class ManagedKoreanFilterFactory extends KoreanFilterFactory
 					if (emptyWords) {
 						// 단어 사전을 제외한다.
 						log.info("기본 단어 사전을 사용하지 않습니다");
-						builder.addSystemResource(ArirangResourceType.SyllableFeature, //
+						builder.addSystemResource(DictionaryType.SyllableFeature, //
 								// ArirangResourceType.Dictionary, //
 								// ArirangResourceType.Extension, //
-								ArirangResourceType.Josa, //
-								ArirangResourceType.Eomi, //
-								ArirangResourceType.Prefix, //
-								ArirangResourceType.Suffix, //
+								DictionaryType.Josa, //
+								DictionaryType.Eomi, //
+								DictionaryType.Prefix, //
+								DictionaryType.Suffix, //
 								// ArirangResourceType.Compounds, //
 								// ArirangResourceType.UnCompounds, //
-								ArirangResourceType.Abbrev, //
-								ArirangResourceType.Hanja); // );
+								DictionaryType.Abbrev, //
+								DictionaryType.Hanja); // );
 					} else {
 						builder.addSystemResource();
 					}
 
 					log.info("기본 사전 추가 {}ms", System.currentTimeMillis() - start);
 					if (words != null && !words.isEmpty()) {
-						builder.add(ArirangResourceType.Dictionary, words);
+						builder.add(DictionaryType.Dictionary, words);
 					}
 					if (compounds != null && !compounds.isEmpty()) {
-						builder.add(ArirangResourceType.Compounds, compounds);
+						builder.add(DictionaryType.Compounds, compounds);
 					}
 					if (uncompounds != null && !uncompounds.isEmpty()) {
-						builder.add(ArirangResourceType.UnCompounds, uncompounds);
+						builder.add(DictionaryType.UnCompounds, uncompounds);
 					}
 					dictionary = builder.build();
 					log.info("사전 준비 완료 {}ms", System.currentTimeMillis() - start);
