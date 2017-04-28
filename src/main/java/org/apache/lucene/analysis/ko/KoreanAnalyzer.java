@@ -24,6 +24,8 @@ import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.ko.dictionary.Dictionary;
+import org.apache.lucene.analysis.ko.dictionary.DictionaryBuilder;
 import org.apache.lucene.analysis.standard.ClassicFilter;
 
 
@@ -44,12 +46,16 @@ public class KoreanAnalyzer extends Analyzer {
   private boolean wordSegment = false;
   private boolean decompound = true;
   
+  private Dictionary dictionary;
+  
   public KoreanAnalyzer() {
 	  stopWords = new CharArraySet(0, true);
+	  dictionary = DictionaryBuilder.systemDictionary();
   }
   
   public KoreanAnalyzer(String[] words, boolean ignoreCase) {
 	  stopWords = StopFilter.makeStopSet(words, ignoreCase);
+	  dictionary = DictionaryBuilder.systemDictionary();
   }
   
   @Override
@@ -57,9 +63,9 @@ public class KoreanAnalyzer extends Analyzer {
     final KoreanTokenizer src = new KoreanTokenizer();
     TokenStream tok = new LowerCaseFilter(src);
     tok = new ClassicFilter(tok);
-    tok = new KoreanFilter(tok, bigrammable, hasOrigin, exactMatch, originCNoun, queryMode, decompound);
-    if(wordSegment) tok = new WordSegmentFilter(tok, hasOrigin);
-    tok = new HanjaMappingFilter(tok);
+    tok = new KoreanFilter(tok, bigrammable, hasOrigin, exactMatch, originCNoun, queryMode, decompound, dictionary);
+    if(wordSegment) tok = new WordSegmentFilter(tok, dictionary, hasOrigin);
+    tok = new HanjaMappingFilter(tok, dictionary);
     tok = new PunctuationDelimitFilter(tok);
     tok = new StopFilter(tok, stopWords);
 

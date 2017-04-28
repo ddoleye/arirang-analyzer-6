@@ -25,9 +25,7 @@ import java.util.Map;
 
 import org.apache.lucene.analysis.CharacterUtils;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.ko.morph.MorphException;
-import org.apache.lucene.analysis.ko.utils.DictionaryUtil;
-import org.apache.lucene.analysis.ko.utils.SyllableUtil;
+import org.apache.lucene.analysis.ko.dictionary.Dictionary;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
@@ -68,11 +66,15 @@ public final class KoreanTokenizer extends Tokenizer {
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
+    
+	private Dictionary dictionary;
+	
     public KoreanTokenizer() {
     }
 
-    public KoreanTokenizer(AttributeFactory factory) {
+    public KoreanTokenizer(AttributeFactory factory, Dictionary dictionary) {
         super(factory);
+        this.dictionary = dictionary;
     }
 
     @Override
@@ -194,41 +196,32 @@ public final class KoreanTokenizer extends Tokenizer {
 			if(next_c!=pairstack.get(i)) return true;
 		}
 
+		int start = bufferIndex+size;
+		int end = Math.min(ioBuffer.getLength(), start + 2);
 		
-		try {
-
+		boolean hasParticle = false;
+		for(int i=start;i<end;i++) {
+			int space_c = Character.codePointAt(ioBuffer.getBuffer(), i, ioBuffer.getLength());
 			
-			int start = bufferIndex+size;
-			int end = Math.min(ioBuffer.getLength(), start + 2);
-			
-			boolean hasParticle = false;
-			for(int i=start;i<end;i++) {
-				int space_c = Character.codePointAt(ioBuffer.getBuffer(), i, ioBuffer.getLength());
-				
-				if(space_c==32) { // 32 is space ascii code
-					if(i==start)
-						return true;
-					else
-						return false;
-				}
-				
-				char[] feature =  SyllableUtil.getFeature((char)space_c);
-				
-				if(i==start && !(feature[SyllableUtil.IDX_JOSA1]=='1' || feature[SyllableUtil.IDX_EOMI1]=='1')) {
+			if(space_c==32) { // 32 is space ascii code
+				if(i==start)
 					return true;
-				} else if(i==start+1 && !(feature[SyllableUtil.IDX_JOSA2]=='1' || feature[SyllableUtil.IDX_EOMI2]=='1')) {
-					return true;
-				} 
-				
-				hasParticle = true;
+				else
+					return false;
 			}
-
-			return !hasParticle;
 			
-		} catch (MorphException e) {
-			throw new RuntimeException("Error occured while reading a josa");
+			char[] feature =  dictionary.getFeature((char)space_c);
+			
+			if(i==start && !(feature[Dictionary.IDX_JOSA1]=='1' || feature[Dictionary.IDX_EOMI1]=='1')) {
+				return true;
+			} else if(i==start+1 && !(feature[Dictionary.IDX_JOSA2]=='1' || feature[Dictionary.IDX_EOMI2]=='1')) {
+				return true;
+			} 
+			
+			hasParticle = true;
 		}
 
+		return !hasParticle;
 	}
     
     private boolean isTokenChar(int c) {

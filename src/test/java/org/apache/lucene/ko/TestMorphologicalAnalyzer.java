@@ -2,7 +2,7 @@ package org.apache.lucene.ko;
 
 import java.util.List;
 
-
+import org.apache.lucene.analysis.ko.dictionary.DictionaryBuilder;
 import org.apache.lucene.analysis.ko.morph.AnalysisOutput;
 import org.apache.lucene.analysis.ko.morph.CompoundEntry;
 import org.apache.lucene.analysis.ko.morph.MorphAnalyzer;
@@ -24,7 +24,7 @@ public class TestMorphologicalAnalyzer extends TestCase {
 		
 		long start = System.currentTimeMillis();
 		
-		MorphAnalyzer morphAnalyzer = new MorphAnalyzer();
+		MorphAnalyzer morphAnalyzer = new MorphAnalyzer(DictionaryBuilder.systemDictionary());
 		for(String term : terms) {
 			List<AnalysisOutput> results = morphAnalyzer.analyze(term);
 			

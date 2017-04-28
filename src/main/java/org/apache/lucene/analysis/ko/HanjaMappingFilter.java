@@ -1,17 +1,22 @@
 package org.apache.lucene.analysis.ko;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.ko.dictionary.Dictionary;
 import org.apache.lucene.analysis.ko.morph.CompoundEntry;
 import org.apache.lucene.analysis.ko.morph.CompoundNounAnalyzer;
-import org.apache.lucene.analysis.ko.morph.MorphException;
 import org.apache.lucene.analysis.ko.morph.WordEntry;
-import org.apache.lucene.analysis.ko.utils.DictionaryUtil;
-import org.apache.lucene.analysis.ko.utils.HanjaUtils;
-import org.apache.lucene.analysis.tokenattributes.*;
-
-import java.io.IOException;
-import java.util.*;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 /**
  * Created by SooMyung(soomyung.lee@gmail.com) on 2014. 7. 29.
@@ -25,20 +30,24 @@ public final class HanjaMappingFilter extends TokenFilter {
     
     private static int maxCandidateSize = 5;
 
-    private final CompoundNounAnalyzer cnAnalyzer = new CompoundNounAnalyzer();
 
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
+
+	private Dictionary dictionary;
+	private CompoundNounAnalyzer cnAnalyzer;// = new CompoundNounAnalyzer();
 
     /**
      * Construct a token stream filtering the given input.
      *
      * @param input
      */
-    protected HanjaMappingFilter(TokenStream input) {
+    protected HanjaMappingFilter(TokenStream input, Dictionary dictionary) {
         super(input);
-        cnAnalyzer.setExactMach(false);
+        this.dictionary = dictionary;
+        this.cnAnalyzer = new CompoundNounAnalyzer(dictionary);
+        this.cnAnalyzer.setExactMach(false);
     }
 
     @Override
@@ -61,11 +70,7 @@ public final class HanjaMappingFilter extends TokenFilter {
             for(StringBuffer sb : terms) {
                 if(sb.length()==0) continue;
                 if(isHanja(sb.charAt(0)))
-                    try {
-                        mapHanjaToHangul(sb);
-                    } catch (MorphException e) {
-                        throw new RuntimeException(e);
-                    }
+                    mapHanjaToHangul(sb);
                 else
                     outQueue.add(new KoreanToken(sb.toString(), offset + startOffset, 1));
                 offset += sb.length();
@@ -133,7 +138,7 @@ public final class HanjaMappingFilter extends TokenFilter {
         return result;
     }
 
-    private void mapHanjaToHangul(StringBuffer term) throws MorphException {
+    private void mapHanjaToHangul(StringBuffer term) {
 
         outQueue.add(new KoreanToken(term.toString(),offsetAtt.startOffset()));
         if(term.length()<2) return; // 1글자 한자는 색인어로 한글을 추출하지 않는다.
@@ -145,7 +150,7 @@ public final class HanjaMappingFilter extends TokenFilter {
         
         for(int i=0;i<term.length();i++) {
 
-            char[] chs = HanjaUtils.convertToHangul(term.charAt(i));
+            char[] chs = dictionary.convertToHangul(term.charAt(i));
             if(chs==null) continue;
 
            int caniSize = candiList.size();
@@ -163,8 +168,7 @@ public final class HanjaMappingFilter extends TokenFilter {
                     sb.append(chs[k]);
                     if(k>0)  candiList.add(sb);
                     
-                	@SuppressWarnings("rawtypes")
-					Iterator iter = DictionaryUtil.findWithPrefix(sb.toString());
+                	Iterator<WordEntry> iter = dictionary.findWithPrefix(sb.toString());
                     if(!iter.hasNext() && !removeList.contains(sb)) removeList.add(sb); // 사전에 없으면 삭제 후보
                 }
             }
@@ -230,9 +234,9 @@ public final class HanjaMappingFilter extends TokenFilter {
         return  false;
     }
 
-    private List<CompoundEntry> confirmCNoun(String input) throws MorphException {
+    private List<CompoundEntry> confirmCNoun(String input) {
 
-        WordEntry cnoun = DictionaryUtil.getAllNoun(input);
+        WordEntry cnoun = dictionary.getAllNoun(input);
         if(cnoun!=null && cnoun.getFeature(WordEntry.IDX_NOUN)=='2') {
             return cnoun.getCompounds();
         }

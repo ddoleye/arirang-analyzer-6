@@ -6,12 +6,11 @@ import java.util.List;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.ko.dictionary.Dictionary;
 import org.apache.lucene.analysis.ko.morph.AnalysisOutput;
 import org.apache.lucene.analysis.ko.morph.CompoundEntry;
-import org.apache.lucene.analysis.ko.morph.MorphException;
 import org.apache.lucene.analysis.ko.morph.PatternConstants;
 import org.apache.lucene.analysis.ko.morph.WordSegmentAnalyzer;
-import org.apache.lucene.analysis.ko.utils.DictionaryUtil;
 import org.apache.lucene.analysis.ko.utils.MorphUtil;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -34,14 +33,17 @@ public final class WordSegmentFilter extends TokenFilter {
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     private final MorphemeAttribute morphAtt = addAttribute(MorphemeAttribute.class);
+
+	private Dictionary dictionary;
     
-	protected WordSegmentFilter(TokenStream input) {
+	protected WordSegmentFilter(TokenStream input, Dictionary dictionary) {
 		super(input);
-		segmentAnalyzer = new WordSegmentAnalyzer();
+		segmentAnalyzer = new WordSegmentAnalyzer(dictionary);
+		this.dictionary = dictionary;
 	}
 
-	protected WordSegmentFilter(TokenStream input, boolean hasOrigin) {
-		this(input);
+	protected WordSegmentFilter(TokenStream input, Dictionary dictionary, boolean hasOrigin) {
+		this(input, dictionary);
 		this.hasOrigin = hasOrigin;
 	}
 	
@@ -75,66 +77,62 @@ public final class WordSegmentFilter extends TokenFilter {
         			kToken==null || kToken.getOutputs().size()==0 
         			|| kToken.getOutputs().get(0).getScore()>AnalysisOutput.SCORE_COMPOUNDS ||
         					(kToken.getOutputs().get(0).getScore()==AnalysisOutput.SCORE_COMPOUNDS && 
-        					!(containJosa(kToken) || MorphUtil.hasVerbOnly(kToken.getOutputs().get(0).getStem()))))
+        					!(containJosa(kToken) || MorphUtil.hasVerbOnly(dictionary, kToken.getOutputs().get(0).getStem()))))
         		return true;
         	
         	String term = termAtt.toString();
-        	try {
         		
-				if(hasOrigin) outQueue.add(new KoreanToken(termAtt.toString(), offsetAtt.startOffset(), posIncrAtt.getPositionIncrement()));
+			if(hasOrigin) outQueue.add(new KoreanToken(termAtt.toString(), offsetAtt.startOffset(), posIncrAtt.getPositionIncrement()));
+			
+			List<List<AnalysisOutput>> segments = segmentAnalyzer.analyze(term);
+			if(segments.size()<2) {
+				if(hasOrigin) outQueue.removeFirst();
+				return true;
+			}
+			
+			int offset = 0;
+			for(int i=0;i<segments.size();i++)
+			{
+				assert segments.get(i).size()>0;
 				
-				List<List<AnalysisOutput>> segments = segmentAnalyzer.analyze(term);
-				if(segments.size()<2) {
-					if(hasOrigin) outQueue.removeFirst();
-					return true;
-				}
+				String word = segments.get(i).get(0).getSource();
+				List<CompoundEntry> entries = segments.get(i).get(0).getCNounList();
+				int posInc = i==0 ? 0 : 1;
 				
-				int offset = 0;
-				for(int i=0;i<segments.size();i++)
-				{
-					assert segments.get(i).size()>0;
+				if(hasOrigin) outQueue.add(new KoreanToken(word,offsetAtt.startOffset()+offset, posInc));
+				
+				if(entries.size()>1) {
+					if(!hasOrigin || !word.equals(segments.get(i).get(0).getStem()))
+						outQueue.add(new KoreanToken(segments.get(i).get(0).getStem(),offsetAtt.startOffset()+offset, hasOrigin ? 0 : posInc));
 					
-					String word = segments.get(i).get(0).getSource();
-					List<CompoundEntry> entries = segments.get(i).get(0).getCNounList();
-					int posInc = i==0 ? 0 : 1;
-					
-					if(hasOrigin) outQueue.add(new KoreanToken(word,offsetAtt.startOffset()+offset, posInc));
-					
-					if(entries.size()>1) {
+					int innerOffset = offset;
+					for(int k=0;k<entries.size();k++) {
+						CompoundEntry ce = entries.get(k);
+						int innerPosInc = k==0 ? 0 : 1;
+						outQueue.add(new KoreanToken(ce.getWord(),offsetAtt.startOffset()+innerOffset, innerPosInc));
+						innerOffset += ce.getWord().length();
+					}
+				} else {
+					if(segments.get(i).get(0).getPatn()>=PatternConstants.PTN_VM && segments.get(i).get(0).getPatn()<PatternConstants.PTN_ZZZ) {
+						if(!hasOrigin) outQueue.add(new KoreanToken(word,offsetAtt.startOffset()+offset, posInc));
+					} else {
 						if(!hasOrigin || !word.equals(segments.get(i).get(0).getStem()))
 							outQueue.add(new KoreanToken(segments.get(i).get(0).getStem(),offsetAtt.startOffset()+offset, hasOrigin ? 0 : posInc));
-						
-						int innerOffset = offset;
-						for(int k=0;k<entries.size();k++) {
-							CompoundEntry ce = entries.get(k);
-							int innerPosInc = k==0 ? 0 : 1;
-							outQueue.add(new KoreanToken(ce.getWord(),offsetAtt.startOffset()+innerOffset, innerPosInc));
-							innerOffset += ce.getWord().length();
-						}
-					} else {
-						if(segments.get(i).get(0).getPatn()>=PatternConstants.PTN_VM && segments.get(i).get(0).getPatn()<PatternConstants.PTN_ZZZ) {
-							if(!hasOrigin) outQueue.add(new KoreanToken(word,offsetAtt.startOffset()+offset, posInc));
-						} else {
-							if(!hasOrigin || !word.equals(segments.get(i).get(0).getStem()))
-								outQueue.add(new KoreanToken(segments.get(i).get(0).getStem(),offsetAtt.startOffset()+offset, hasOrigin ? 0 : posInc));
-						}
 					}
-					
-					offset += word.length();
 				}
 				
-				captureState();
-				modeQueue = true;
-				morphOutputs = kToken.getOutputs();
-				
-	            if (!outQueue.isEmpty()) {
-					setAttributesFromQueue();
-					return true;
-	            }
-	            
-			} catch (MorphException e) {
-				throw new RuntimeException(e);
+				offset += word.length();
 			}
+			
+			captureState();
+			modeQueue = true;
+			morphOutputs = kToken.getOutputs();
+			
+            if (!outQueue.isEmpty()) {
+				setAttributesFromQueue();
+				return true;
+            }
+	            
         }
         
     	if(outQueue.size()>0) {
@@ -150,13 +148,9 @@ public final class WordSegmentFilter extends TokenFilter {
 		List<AnalysisOutput> outputs = kToken.getOutputs();
 		if(outputs.size()==0 || outputs.get(0).getCNounList().size()==0) return false;
 		
-		try {
-			List<CompoundEntry> entries = outputs.get(0).getCNounList();
-			for(int i=0;i<entries.size();i++) {
-				if(DictionaryUtil.existJosa(entries.get(i).getWord())) return true;
-			}
-		}catch(MorphException e) {
-			throw new RuntimeException(e);
+		List<CompoundEntry> entries = outputs.get(0).getCNounList();
+		for(int i=0;i<entries.size();i++) {
+			if(dictionary.existJosa(entries.get(i).getWord())) return true;
 		}
 
 		return false;

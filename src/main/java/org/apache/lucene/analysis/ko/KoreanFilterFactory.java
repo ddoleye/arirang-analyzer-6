@@ -20,6 +20,8 @@ package org.apache.lucene.analysis.ko;
 import java.util.Map;
 
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.ko.dictionary.Dictionary;
+import org.apache.lucene.analysis.ko.dictionary.DictionaryBuilder;
 import org.apache.lucene.analysis.util.TokenFilterFactory;
 
 /**
@@ -66,11 +68,19 @@ private static final String BIGRAMMABLE_PARAM = "bigrammable";
   
   private final boolean decompound;
   
+  private Dictionary dictionary;
   
   /**
    * Initialize this factory via a set of key-value pairs.
    */
   public KoreanFilterFactory(Map<String, String> args) {
+    this(args, false);
+  }
+  
+  /**
+   * Initialize this factory via a set of key-value pairs.
+   */
+  protected KoreanFilterFactory(Map<String, String> args, boolean moreArgs) {
     super(args);
     bigrammable = getBoolean(args, BIGRAMMABLE_PARAM, true);
     hasOrigin = getBoolean(args, HAS_ORIGIN_PARAM, true);
@@ -78,12 +88,17 @@ private static final String BIGRAMMABLE_PARAM = "bigrammable";
     hasCNoun = getBoolean(args, HAS_COMPOUND_NOUN_PARAM, true);
     queryMode = getBoolean(args, IS_QUERY_MODE_PARAM, true);
     decompound = getBoolean(args, DECOMPOUND_PARAM, true);
-    if (!args.isEmpty()) {
+    if (!moreArgs && !args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }
   }
+  
+  protected void setDictionary(Dictionary dictionary) {
+	  this.dictionary = dictionary;
+  }
 
   public TokenStream create(TokenStream tokenstream) {
-    return new KoreanFilter(tokenstream, bigrammable, hasOrigin, exactMatch, hasCNoun, queryMode, decompound);
+    return new KoreanFilter(tokenstream, bigrammable, hasOrigin, exactMatch, hasCNoun, queryMode, decompound, 
+    		dictionary != null ? dictionary : DictionaryBuilder.systemDictionary());
   }
 }

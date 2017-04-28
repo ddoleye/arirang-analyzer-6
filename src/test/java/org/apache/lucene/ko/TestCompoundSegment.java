@@ -3,6 +3,7 @@ package org.apache.lucene.ko;
 
 import java.util.List;
 
+import org.apache.lucene.analysis.ko.dictionary.DictionaryBuilder;
 import org.apache.lucene.analysis.ko.morph.CompoundEntry;
 import org.apache.lucene.analysis.ko.morph.CompoundNounAnalyzer;
 
@@ -18,7 +19,7 @@ public class TestCompoundSegment extends TestCase {
 				};
 		
 		for(String input : inputs) {
-			CompoundNounAnalyzer analyzer = new CompoundNounAnalyzer();
+			CompoundNounAnalyzer analyzer = new CompoundNounAnalyzer(DictionaryBuilder.systemDictionary());
 			
 			List<CompoundEntry> entries = analyzer.analyze(input);
 			if(entries==null){

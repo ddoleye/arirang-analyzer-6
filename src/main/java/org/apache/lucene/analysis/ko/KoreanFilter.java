@@ -26,13 +26,12 @@ import java.util.Map;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.ko.dictionary.Dictionary;
 import org.apache.lucene.analysis.ko.morph.AnalysisOutput;
 import org.apache.lucene.analysis.ko.morph.CompoundEntry;
 import org.apache.lucene.analysis.ko.morph.MorphAnalyzer;
-import org.apache.lucene.analysis.ko.morph.MorphException;
 import org.apache.lucene.analysis.ko.morph.PatternConstants;
 import org.apache.lucene.analysis.ko.morph.WordEntry;
-import org.apache.lucene.analysis.ko.utils.DictionaryUtil;
 import org.apache.lucene.analysis.ko.utils.MorphUtil;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -57,11 +56,13 @@ public final class KoreanFilter extends TokenFilter {
 	private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
 	private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
 	private final MorphemeAttribute morphAtt = addAttribute(MorphemeAttribute.class);
+	
+	private Dictionary dictionary;
 
   private static final String KOREAN_TYPE = KoreanTokenizer.TYPE_KOREAN;
     
-  public KoreanFilter(TokenStream input) {
-    this(input, true);
+  public KoreanFilter(TokenStream input, Dictionary dictionary) {
+    this(input, true, dictionary);
   }
 
   /**
@@ -69,38 +70,39 @@ public final class KoreanFilter extends TokenFilter {
    * @param input  input token stream
    * @param bigram  Whether the bigram index term return or not.
    */
-  public KoreanFilter(TokenStream input, boolean bigram) {
-    this(input, bigram, false);
+  public KoreanFilter(TokenStream input, boolean bigram, Dictionary dictionary) {
+    this(input, bigram, false, dictionary);
   }
   
-  public KoreanFilter(TokenStream input, boolean bigram, boolean has) {
-    this(input, bigram, has, false);
+  public KoreanFilter(TokenStream input, boolean bigram, boolean has, Dictionary dictionary) {
+    this(input, bigram, has, false, dictionary);
   }
   
-  public KoreanFilter(TokenStream input, boolean bigram, boolean has, boolean exactMatch) {
-    this(input, bigram, has, exactMatch, true);
+  public KoreanFilter(TokenStream input, boolean bigram, boolean has, boolean exactMatch, Dictionary dictionary) {
+    this(input, bigram, has, exactMatch, true, dictionary);
   }
 
-  public KoreanFilter(TokenStream input, boolean bigram, boolean has, boolean exactMatch, boolean cnoun) {
-	  this(input, bigram, has,exactMatch,cnoun, false);
+  public KoreanFilter(TokenStream input, boolean bigram, boolean has, boolean exactMatch, boolean cnoun, Dictionary dictionary) {
+	  this(input, bigram, has,exactMatch,cnoun, false, dictionary);
   }
   
   public KoreanFilter(TokenStream input, boolean bigram, boolean has, boolean exactMatch, 
-		  boolean cnoun, boolean isQuery) {
-	  this(input, bigram, has,exactMatch,cnoun, false, true);
+		  boolean cnoun, boolean isQuery, Dictionary dictionary) {
+	  this(input, bigram, has,exactMatch,cnoun, false, true, dictionary);
   }
   
   public KoreanFilter(TokenStream input, boolean bigram, boolean has, boolean exactMatch, 
-		  boolean cnoun, boolean isQuery, boolean decompound) {
+		  boolean cnoun, boolean isQuery, boolean decompound, Dictionary dictionary) {
 	  
     super(input);
     this.bigrammable = bigram;
     this.hasOrigin = has;
     this.originCNoun = cnoun;
-    this.morph = new MorphAnalyzer();
+    this.morph = new MorphAnalyzer(dictionary);
     this.morph.setExactCompound(exactMatch);
     this.queryMode = isQuery;
     this.decompound = decompound;
+    this.dictionary = dictionary;
     
 //    if(this.queryMode)
 //    	this.morph.setDivisibleOne(false);
@@ -117,11 +119,7 @@ public final class KoreanFilter extends TokenFilter {
       final String type = typeAtt.type();
       String term = termAtt.toString();
       if (KOREAN_TYPE.equals(type)) {
-        try {
-			analysisKorean(term);
-		} catch (MorphException e) {
-			throw new RuntimeException(e);
-		}
+		analysisKorean(term);
       } else {
         return true; // pass anything else thru
       }        
@@ -163,9 +161,8 @@ public final class KoreanFilter extends TokenFilter {
   
   /**
    * Analyze korean text
- * @throws MorphException 
    */
-  private void analysisKorean(String input) throws MorphException {
+  private void analysisKorean(String input) {
 
 //	input = trimHangul(input);
     List<AnalysisOutput> outputs = morph.analyze(input);
@@ -323,16 +320,11 @@ public final class KoreanFilter extends TokenFilter {
 		if (!("로".equals(output.getJosa()) || "도".equals(output.getJosa())))
 			return false;
 
-		try {
-			WordEntry entry = DictionaryUtil.getNoun(output.getStem());
+		WordEntry entry = dictionary.getNoun(output.getStem());
 
-			if (entry!=null && (entry.getFeature(WordEntry.IDX_BEV) == '1'
-					|| entry.getFeature(WordEntry.IDX_DOV) == '1'))
-				return true;
-
-		} catch (MorphException e) {
-			throw new RuntimeException(e);
-		}
+		if (entry!=null && (entry.getFeature(WordEntry.IDX_BEV) == '1'
+				|| entry.getFeature(WordEntry.IDX_DOV) == '1'))
+			return true;
 
 		return false;
 	}

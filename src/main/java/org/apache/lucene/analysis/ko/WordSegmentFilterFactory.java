@@ -3,6 +3,7 @@ package org.apache.lucene.analysis.ko;
 import java.util.Map;
 
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.ko.dictionary.DictionaryBuilder;
 import org.apache.lucene.analysis.util.TokenFilterFactory;
 
 public class WordSegmentFilterFactory extends TokenFilterFactory {
@@ -18,7 +19,7 @@ public class WordSegmentFilterFactory extends TokenFilterFactory {
 
 	@Override
 	public TokenStream create(TokenStream input) {
-		return new WordSegmentFilter(input, hasOrigin);
+		return new WordSegmentFilter(input, DictionaryBuilder.systemDictionary(), hasOrigin);
 	}
 
 }

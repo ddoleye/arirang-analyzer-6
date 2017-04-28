@@ -20,23 +20,32 @@ package org.apache.lucene.analysis.ko;
 import java.util.Map;
 
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.ko.dictionary.DictionaryBuilder;
+import org.apache.lucene.analysis.ko.dictionary.ArirangResourceType;
+import org.apache.lucene.analysis.ko.dictionary.Dictionary;
 import org.apache.lucene.analysis.util.TokenizerFactory;
 import org.apache.lucene.util.AttributeFactory;
 
 public class KoreanTokenizerFactory extends TokenizerFactory {
 
-  /**
-   * Initialize this factory via a set of key-value pairs.
-   */
-  public KoreanTokenizerFactory(Map<String, String> args) {
-    super(args);
-    if (!args.isEmpty()) {
-      throw new IllegalArgumentException("Unknown parameters: " + args);
-    }
-  }
+	private Dictionary dictionary;
+
+	/**
+	 * Initialize this factory via a set of key-value pairs.
+	 */
+	public KoreanTokenizerFactory(Map<String, String> args) {
+		super(args);
+		if (!args.isEmpty()) {
+			throw new IllegalArgumentException("Unknown parameters: " + args);
+		}
+
+		// Tokenizer는 SyllableFeature 정보만 있으면 된다?
+		dictionary = DictionaryBuilder.newBuilder()
+				.addSystemResource(ArirangResourceType.SyllableFeature).build();
+	}
 
 	@Override
 	public Tokenizer create(AttributeFactory factory) {
-		return new KoreanTokenizer(factory);
+		return new KoreanTokenizer(factory, dictionary);
 	}
 }

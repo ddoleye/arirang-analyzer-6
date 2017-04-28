@@ -3,6 +3,7 @@ package org.apache.lucene.analysis.ko;
 import java.util.Map;
 
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.ko.dictionary.DictionaryBuilder;
 import org.apache.lucene.analysis.util.TokenFilterFactory;
 
 /**
@@ -21,6 +22,6 @@ public class HanjaMappingFilterFactory extends TokenFilterFactory {
 
     @Override
     public TokenStream create(TokenStream input) {
-        return new HanjaMappingFilter(input);
+        return new HanjaMappingFilter(input, DictionaryBuilder.systemDictionary());
     }
 }
