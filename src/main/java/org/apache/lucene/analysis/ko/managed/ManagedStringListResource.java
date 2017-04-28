@@ -69,10 +69,6 @@ public class ManagedStringListResource extends ManagedResource
 			storeManagedData(new ArrayList<String>(0));
 		}
 		
-		if (managedContents.size() > 2) {
-			throw new IllegalStateException("머지?");
-		}
-
 		log.info("Loaded " + managedContents.size() + " lines for " + getResourceId());
 	}
 
