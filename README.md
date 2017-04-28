@@ -5,40 +5,21 @@ soomyung 님이 만드신 [arirang-analyzer-6](https://github.com/soomyung/arira
 
 ManagedKoreanFilterFactory를 사용하여 확장사전(extension.dic), 복합명사사전(compounds.dic), 복합명사분해사전(uncompounds.dic)을 추가할 수 있습니다.
 
-이 버전은 사전기능을 수정한 [arirang.morph](/ddoleye/arirang.morph) 를 사용합니다.
+이 버전은 사전기능을 수정한 [arirang.morph](https://github.com/ddoleye/arirang.morph) 를 사용합니다.
 
 스키마를 아래와 같이 설정하여 사용합니다.
 
     <fieldType name="managed_ko" class="solr.TextField">
     <analyzer type="index">
-      <tokenizer class="org.apache.lucene.analysis.ko.KoreanTokenizerFactory"/>
-      <filter class="solr.LowerCaseFilterFactory"/>
-      <filter class="solr.ClassicFilterFactory" />
+      ...
       <filter class="org.apache.lucene.analysis.ko.managed.ManagedKoreanFilterFactory" hasOrigin="true" hasCNoun="true"  bigrammable="false" queryMode="false"
           extension="extension" compounds="compounds" uncompounds="uncompounds" /><!-- 사전 콘텐츠 추가 가능 -->
-      <filter class="org.apache.lucene.analysis.ko.HanjaMappingFilterFactory" />
-      <filter class="solr.KeywordMarkerFilterFactory" protected="protwords.txt"/>
-      <filter class="org.apache.lucene.analysis.ko.PunctuationDelimitFilterFactory" />
-      <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" />
-      <filter class="solr.KeywordRepeatFilterFactory"/>
-      <filter class="solr.EnglishPossessiveFilterFactory"/>
-      <filter class="solr.PorterStemFilterFactory"/>
-      <filter class="solr.RemoveDuplicatesTokenFilterFactory"/>
+      ...
     </analyzer>
     <analyzer type="query">
-      <tokenizer class="org.apache.lucene.analysis.ko.KoreanTokenizerFactory"/>
-      <filter class="solr.LowerCaseFilterFactory"/>
-      <filter class="solr.ClassicFilterFactory" />
+      ...
       <filter class="org.apache.lucene.analysis.ko.managed.ManagedKoreanFilterFactory" hasOrigin="true" hasCNoun="true"  bigrammable="false" queryMode="true" extension="extension" compounds="compounds" uncompounds="uncompounds" /><!-- 사전 콘텐츠 추가 가능 -->
-      <filter class="org.apache.lucene.analysis.ko.WordSegmentFilterFactory" hasOrijin="true"/>
-      <filter class="org.apache.lucene.analysis.ko.HanjaMappingFilterFactory" />
-      <filter class="solr.KeywordMarkerFilterFactory" protected="protwords.txt"/>
-      <filter class="org.apache.lucene.analysis.ko.PunctuationDelimitFilterFactory" />
-      <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" />
-      <filter class="solr.KeywordRepeatFilterFactory"/>
-      <filter class="solr.EnglishPossessiveFilterFactory"/>
-      <filter class="solr.PorterStemFilterFactory"/>
-      <filter class="solr.RemoveDuplicatesTokenFilterFactory"/>
+      ...
     </analyzer>
     </fieldType>
 
