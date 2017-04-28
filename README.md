@@ -12,13 +12,16 @@ ManagedKoreanFilterFactory를 사용하여 확장사전(extension.dic), 복합�
     <fieldType name="managed_ko" class="solr.TextField">
     <analyzer type="index">
       ...
-      <filter class="org.apache.lucene.analysis.ko.managed.ManagedKoreanFilterFactory" hasOrigin="true" hasCNoun="true"  bigrammable="false" queryMode="false"
-          extension="extension" compounds="compounds" uncompounds="uncompounds" /><!-- 사전 콘텐츠 추가 가능 -->
+      <filter class="org.apache.lucene.analysis.ko.managed.ManagedKoreanFilterFactory"
+       hasOrigin="true" hasCNoun="true"  bigrammable="false" queryMode="false"
+       extension="extension" compounds="compounds" uncompounds="uncompounds" /><!-- 사전 콘텐츠 추가 가능 -->
       ...
     </analyzer>
     <analyzer type="query">
       ...
-      <filter class="org.apache.lucene.analysis.ko.managed.ManagedKoreanFilterFactory" hasOrigin="true" hasCNoun="true"  bigrammable="false" queryMode="true" extension="extension" compounds="compounds" uncompounds="uncompounds" /><!-- 사전 콘텐츠 추가 가능 -->
+      <filter class="org.apache.lucene.analysis.ko.managed.ManagedKoreanFilterFactory"
+       hasOrigin="true" hasCNoun="true" bigrammable="false" queryMode="true" 
+       extension="extension" compounds="compounds" uncompounds="uncompounds" /><!-- 사전 콘텐츠 추가 가능 -->
       ...
     </analyzer>
     </fieldType>
