@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.ko.KoreanFilterFactory;
@@ -49,6 +48,10 @@ import org.slf4j.LoggerFactory;
  *       hasOrigin="true"
  *       hasCNoun="true"
  *       exactMatch="false"
+ *       words="ko"
+ *       compounds="compounds"
+ *       uncompounds="uncompounds"
+ *       emptyWords="false"       
  *     /&gt;
  *   &lt;/filter&gt;
  * &lt;/fieldType&gt;
@@ -58,17 +61,18 @@ import org.slf4j.LoggerFactory;
 public class ManagedKoreanFilterFactory extends KoreanFilterFactory
 		implements ResourceLoaderAware, ManagedResourceObserver {
 	// 공유하도록 한다.
-	public static final String RESOURCEID_EXTENSION = "/schema/analysis/arirang/extension/";
+	public static final String RESOURCEID_WORDS = "/schema/analysis/arirang/words/";
 	public static final String RESOURCEID_COMPOUNDS = "/schema/analysis/arirang/compounds/";
 	public static final String RESOURCEID_UNCOMPOUNDS = "/schema/analysis/arirang/uncompounds/";
 
-	private String handleExtension;
+	private String handleWords;
 	private String handleCompounds;
 	private String handleUnCompounds;
 
-	private List<String> extensions;
+	private List<String> words;
 	private List<String> compounds;
 	private List<String> uncompounds;
+	private boolean emptyWords = false;
 	private Dictionary dictionary = null;
 
 	private static Logger log = LoggerFactory.getLogger(ManagedKoreanFilterFactory.class);
@@ -79,9 +83,10 @@ public class ManagedKoreanFilterFactory extends KoreanFilterFactory
 	public ManagedKoreanFilterFactory(Map<String, String> args) {
 		super(args, true);
 
-		handleExtension = get(args, "extension");
+		handleWords = get(args, "words");
 		handleCompounds = get(args, "compounds");
 		handleUnCompounds = get(args, "uncompounds");
+		emptyWords = getBoolean(args, "emptyWords", false);
 
 		if (!args.isEmpty()) {
 			throw new IllegalArgumentException("Unknown parameters: " + args);
@@ -89,19 +94,11 @@ public class ManagedKoreanFilterFactory extends KoreanFilterFactory
 	}
 
 	// Debugging
-	public ManagedKoreanFilterFactory(Map<String, String> args, List<String> extensions,
+	public ManagedKoreanFilterFactory(Map<String, String> args, List<String> words,
 			List<String> compounds, List<String> uncompounds) {
-		super(args, true);
+		this(args);
 
-		handleExtension = get(args, "extension");
-		handleCompounds = get(args, "compounds");
-		handleUnCompounds = get(args, "uncompounds");
-
-		if (!args.isEmpty()) {
-			throw new IllegalArgumentException("Unknown parameters: " + args);
-		}
-
-		this.extensions = extensions;
+		this.words = words;
 		this.compounds = compounds;
 		this.uncompounds = uncompounds;
 	}
@@ -110,9 +107,9 @@ public class ManagedKoreanFilterFactory extends KoreanFilterFactory
 	public void inform(ResourceLoader loader) throws IOException {
 		SolrResourceLoader solrResourceLoader = (SolrResourceLoader) loader;
 
-		if (handleExtension != null) {
+		if (handleWords != null) {
 			solrResourceLoader.getManagedResourceRegistry().registerManagedResource(
-					RESOURCEID_EXTENSION + handleExtension, //
+					RESOURCEID_WORDS + handleWords, //
 					ManagedStringListResource.class, this);
 		}
 		if (handleCompounds != null) {
@@ -133,11 +130,30 @@ public class ManagedKoreanFilterFactory extends KoreanFilterFactory
 				if (dictionary == null) {
 					long start = System.currentTimeMillis();
 					// 기본 사전 추가 TODO 기본 사전을 공유하는 방법이 필요할둣
+
 					DictionaryBuilder builder = DictionaryBuilder.newBuilder();
-					builder.addSystemResource();
+
+					if (emptyWords) {
+						// 단어 사전을 제외한다.
+						log.info("기본 단어 사전을 사용하지 않습니다");
+						builder.addSystemResource(ArirangResourceType.SyllableFeature, //
+								// ArirangResourceType.Dictionary, //
+								// ArirangResourceType.Extension, //
+								ArirangResourceType.Josa, //
+								ArirangResourceType.Eomi, //
+								ArirangResourceType.Prefix, //
+								ArirangResourceType.Suffix, //
+								// ArirangResourceType.Compounds, //
+								// ArirangResourceType.UnCompounds, //
+								ArirangResourceType.Abbrev, //
+								ArirangResourceType.Hanja); // );
+					} else {
+						builder.addSystemResource();
+					}
+
 					log.info("기본 사전 추가 {}ms", System.currentTimeMillis() - start);
-					if (extensions != null && !extensions.isEmpty()) {
-						builder.add(ArirangResourceType.Extension, extensions);
+					if (words != null && !words.isEmpty()) {
+						builder.add(ArirangResourceType.Dictionary, words);
 					}
 					if (compounds != null && !compounds.isEmpty()) {
 						builder.add(ArirangResourceType.Compounds, compounds);
@@ -166,8 +182,8 @@ public class ManagedKoreanFilterFactory extends KoreanFilterFactory
 		// 두번 이상 호출?
 		// log.info("{} 추가 사전[{}] 적용 [{}]", c.incrementAndGet(),
 		// res.getResourceId(), list);
-		if (res.getResourceId().startsWith(RESOURCEID_EXTENSION)) {
-			extensions = new ArrayList<String>(list);
+		if (res.getResourceId().startsWith(RESOURCEID_WORDS)) {
+			words = new ArrayList<String>(list);
 		} else if (res.getResourceId().startsWith(RESOURCEID_COMPOUNDS)) {
 			compounds = new ArrayList<String>(list);
 		} else if (res.getResourceId().startsWith(RESOURCEID_UNCOMPOUNDS)) {
