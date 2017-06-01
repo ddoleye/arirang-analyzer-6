@@ -3,17 +3,16 @@ package org.apache.lucene.analysis.ko;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.ko.dictionary.CompoundEntry;
 import org.apache.lucene.analysis.ko.dictionary.Dictionary;
-import org.apache.lucene.analysis.ko.morph.CompoundEntry;
+import org.apache.lucene.analysis.ko.dictionary.WordEntry;
 import org.apache.lucene.analysis.ko.morph.CompoundNounAnalyzer;
-import org.apache.lucene.analysis.ko.morph.WordEntry;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
@@ -168,8 +167,7 @@ public final class HanjaMappingFilter extends TokenFilter {
                     sb.append(chs[k]);
                     if(k>0)  candiList.add(sb);
                     
-                	Iterator<WordEntry> iter = dictionary.findWithPrefix(sb.toString());
-                    if(!iter.hasNext() && !removeList.contains(sb)) removeList.add(sb); // 사전에 없으면 삭제 후보
+                    if(!dictionary.hasPrefixedBy(sb.toString()) && !removeList.contains(sb)) removeList.add(sb); // 사전에 없으면 삭제 후보
                 }
             }
             
