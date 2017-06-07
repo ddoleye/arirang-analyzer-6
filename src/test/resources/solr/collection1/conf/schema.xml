@@ -461,13 +461,13 @@
 		</analyzer>
 	</fieldType>
 
-  <fieldType name="managed_ko" class="solr.TextField">
+   <fieldType name="managed_ko" class="solr.TextField">
     <analyzer type="index">
       <tokenizer class="org.apache.lucene.analysis.ko.KoreanTokenizerFactory"/>
       <filter class="solr.LowerCaseFilterFactory"/>
       <filter class="solr.ClassicFilterFactory" />
-      <filter class="org.apache.lucene.analysis.ko.managed.ManagedKoreanFilterFactory" hasOrigin="true" hasCNoun="true"  bigrammable="false" queryMode="false" extension="extension" compounds="compounds" uncompounds="uncompounds" />
-      <filter class="org.apache.lucene.analysis.ko.HanjaMappingFilterFactory" />
+      <filter class="org.apache.lucene.analysis.ko.managed.ManagedKoreanFilterFactory" hasOrigin="true" hasCNoun="true"  bigrammable="false" queryMode="false" managed="ko" />
+      <filter class="org.apache.lucene.analysis.ko.managed.ManagedHanjaMappingFilterFactory" managed="ko" />
       <filter class="solr.KeywordMarkerFilterFactory" protected="protwords.txt"/>
       <filter class="org.apache.lucene.analysis.ko.PunctuationDelimitFilterFactory" />
       <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" />
@@ -480,9 +480,9 @@
       <tokenizer class="org.apache.lucene.analysis.ko.KoreanTokenizerFactory"/>
       <filter class="solr.LowerCaseFilterFactory"/>
       <filter class="solr.ClassicFilterFactory" />
-      <filter class="org.apache.lucene.analysis.ko.managed.ManagedKoreanFilterFactory" hasOrigin="true" hasCNoun="true"  bigrammable="false" queryMode="true" extension="extension" compounds="compounds" uncompounds="uncompounds" />
-      <filter class="org.apache.lucene.analysis.ko.WordSegmentFilterFactory" hasOrijin="true"/>
-      <filter class="org.apache.lucene.analysis.ko.HanjaMappingFilterFactory" />
+      <filter class="org.apache.lucene.analysis.ko.managed.ManagedKoreanFilterFactory" hasOrigin="true" hasCNoun="true"  bigrammable="false" queryMode="true" managed="ko" />
+      <filter class="org.apache.lucene.analysis.ko.managed.ManagedWordSegmentFilterFactory" hasOrigin="true" managed="ko"/>
+      <filter class="org.apache.lucene.analysis.ko.managed.ManagedHanjaMappingFilterFactory" managed="ko" />
       <filter class="solr.KeywordMarkerFilterFactory" protected="protwords.txt"/>
       <filter class="org.apache.lucene.analysis.ko.PunctuationDelimitFilterFactory" />
       <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" />

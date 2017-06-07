@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -39,33 +38,43 @@ import org.apache.lucene.analysis.miscellaneous.RemoveDuplicatesTokenFilterFacto
 import org.apache.solr.SolrTestCaseJ4;
 import org.junit.Test;
 
-/**
- * Test the REST API for managing stop words, which is pretty basic: GET:
- * returns the list of stop words or a single word if it exists PUT: add some
- * words to the current list
- */
 public class TestKoreanTokenizerFactory extends SolrTestCaseJ4 {
 
-	Map<String, String> args = new HashMap<>();
+	KoreanTokenizerFactory kt;
+	LowerCaseFilterFactory lc;
+	KoreanFilterFactory kf;
+	HanjaMappingFilterFactory hmf;
+	KeywordMarkerFilterFactory kmf;
+	PunctuationDelimitFilterFactory pdf;
+	KeywordRepeatFilterFactory krf;
+	EnglishPossessiveFilterFactory epf;
+	PorterStemFilterFactory psf;
+	RemoveDuplicatesTokenFilterFactory rdt;
 
-	Map<String, String> kfArgs = new HashMap<>();
-	{
-		kfArgs.put("hasOrigin", "true");
-		kfArgs.put("hasCNoun", "true");
-		kfArgs.put("bigrammable", "false");
-		kfArgs.put("queryMode", "false");
+	@Override
+	public void setUp() throws Exception {
+		super.setUp();
+		// initCore();
+		Map<String, String> args = new HashMap<>();
+		Map<String, String> kfArgs = new HashMap<>();
+		{
+			kfArgs.put("hasOrigin", "true");
+			kfArgs.put("hasCNoun", "true");
+			kfArgs.put("bigrammable", "false");
+			kfArgs.put("queryMode", "false");
+		}
+
+		kt = new KoreanTokenizerFactory(args);
+		lc = new LowerCaseFilterFactory(args);
+		kf = new KoreanFilterFactory(kfArgs);
+		hmf = new HanjaMappingFilterFactory(args);
+		kmf = new KeywordMarkerFilterFactory(args);
+		pdf = new PunctuationDelimitFilterFactory(args);
+		krf = new KeywordRepeatFilterFactory(args);
+		epf = new EnglishPossessiveFilterFactory(args);
+		psf = new PorterStemFilterFactory(args);
+		rdt = new RemoveDuplicatesTokenFilterFactory(args);
 	}
-
-	KoreanTokenizerFactory kt = new KoreanTokenizerFactory(args);
-	LowerCaseFilterFactory lc = new LowerCaseFilterFactory(args);
-	KoreanFilterFactory kf = new KoreanFilterFactory(kfArgs);
-	HanjaMappingFilterFactory hmf = new HanjaMappingFilterFactory(args);
-	KeywordMarkerFilterFactory kmf = new KeywordMarkerFilterFactory(args);
-	PunctuationDelimitFilterFactory pdf = new PunctuationDelimitFilterFactory(args);
-	KeywordRepeatFilterFactory krf = new KeywordRepeatFilterFactory(args);
-	EnglishPossessiveFilterFactory epf = new EnglishPossessiveFilterFactory(args);
-	PorterStemFilterFactory psf = new PorterStemFilterFactory(args);
-	RemoveDuplicatesTokenFilterFactory rdt = new RemoveDuplicatesTokenFilterFactory(args);
 
 	// IndexSchema schema;
 	//

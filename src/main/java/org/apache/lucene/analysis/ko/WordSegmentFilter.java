@@ -42,7 +42,7 @@ public final class WordSegmentFilter extends TokenFilter {
 		this.dictionary = dictionary;
 	}
 
-	protected WordSegmentFilter(TokenStream input, Dictionary dictionary, boolean hasOrigin) {
+	public WordSegmentFilter(TokenStream input, Dictionary dictionary, boolean hasOrigin) {
 		this(input, dictionary);
 		this.hasOrigin = hasOrigin;
 	}

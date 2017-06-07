@@ -42,7 +42,7 @@ public final class HanjaMappingFilter extends TokenFilter {
      *
      * @param input
      */
-    protected HanjaMappingFilter(TokenStream input, Dictionary dictionary) {
+    public HanjaMappingFilter(TokenStream input, Dictionary dictionary) {
         super(input);
         this.dictionary = dictionary;
         this.cnAnalyzer = new CompoundNounAnalyzer(dictionary);

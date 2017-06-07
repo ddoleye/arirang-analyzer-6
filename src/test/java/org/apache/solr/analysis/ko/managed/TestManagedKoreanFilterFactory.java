@@ -19,18 +19,15 @@ package org.apache.solr.analysis.ko.managed;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.util.Arrays;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.lucene.analysis.ko.managed.ManagedKoreanFilterFactory;
 import org.apache.solr.util.RestTestBase;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.noggit.JSONUtil;
 import org.restlet.ext.servlet.ServerServlet;
 
 /**
@@ -87,11 +84,14 @@ public class TestManagedKoreanFilterFactory extends RestTestBase {
 	 */
 	@Test
 	public void testManagedCompounds() throws Exception {
-		String endpoint = ManagedKoreanFilterFactory.RESOURCEID_COMPOUNDS + "compounds";
+		String endpoint = "/schema/analysis/arirang/ko";
 		String newFieldName = "managed_ko_field";
 
 		// 복합명사사전 목록이 비었는지 확인
-		assertJQ(endpoint, "/contents/initArgs=={}", "/contents/managedList==[]");
+		assertJQ(endpoint, "/resources/initArgs/emptyWords==false",
+				"/resources/managedMap/words==[]", //
+				"/resources/managedMap/compounds==[]", //
+				"/resources/managedMap/uncompounds==[]");//
 
 		// 새로운 필드 추가
 
@@ -125,18 +125,15 @@ public class TestManagedKoreanFilterFactory extends RestTestBase {
 				"/response/lst[@name='responseHeader']/int[@name='status'] = '0'",
 				"/response/result[@name='response'][@numFound='0']");
 
-		// 새로운 단어 등록
-		assertJPut(endpoint, JSONUtil.toJSON(Arrays.asList("빅스타:빅,스타:0000", "아르고넷:아르고,넷")),
+		// 새로운 복합명사 등록
+		assertJPut(endpoint, "{compounds:[\"빅스타:빅,스타:0000\", \"아르고넷:아르고,넷:0000\"]}",
 				"/responseHeader/status==0");
 
 		// 복합명사 등록 확인
-		assertJQ(endpoint, "/contents/initArgs=={}",
-				"/contents/managedList==['빅스타:빅,스타:0000', '아르고넷:아르고,넷']");
-
-		// 복합명사 등록 확인
-		assertQ(endpoint, "count(/response/lst[@name='contents']/arr[@name='managedList']/*) = 2",
-				"(/response/lst[@name='contents']/arr[@name='managedList']/str)[1] = '빅스타:빅,스타:0000'",
-				"(/response/lst[@name='contents']/arr[@name='managedList']/str)[2] = '아르고넷:아르고,넷'");
+		assertJQ(endpoint, "/resources/initArgs/emptyWords==false",
+				"/resources/managedMap/words==[]", //
+				"/resources/managedMap/compounds==[\"빅스타:빅,스타:0000\", \"아르고넷:아르고,넷:0000\"]", //
+				"/resources/managedMap/uncompounds==[]");//
 
 		// 테스트 문서 다시 색인 - 복합명사 사전 적용전
 		assertU(adoc(newFieldName, "아르고넷에서 한글형태소분석기를 공개하였습니다", "id", "6"));
@@ -159,9 +156,10 @@ public class TestManagedKoreanFilterFactory extends RestTestBase {
 		restTestHarness.reload(); // make the word set available
 
 		// 복합명사 등록 확인
-		assertQ(endpoint, "count(/response/lst[@name='contents']/arr[@name='managedList']/*) = 2",
-				"(/response/lst[@name='contents']/arr[@name='managedList']/str)[1] = '빅스타:빅,스타:0000'",
-				"(/response/lst[@name='contents']/arr[@name='managedList']/str)[2] = '아르고넷:아르고,넷'");
+		assertJQ(endpoint, "/resources/initArgs/emptyWords==false",
+				"/resources/managedMap/words==[]", //
+				"/resources/managedMap/compounds==[\"빅스타:빅,스타:0000\", \"아르고넷:아르고,넷:0000\"]", //
+				"/resources/managedMap/uncompounds==[]");//
 
 		// 문서 재색인 - 복합명사가 적용되어야 함
 		assertU(adoc(newFieldName, "아르고넷에서 한글형태소분석기 arirang을 공개하였습니다", "id", "7"));

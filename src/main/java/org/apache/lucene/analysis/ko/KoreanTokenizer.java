@@ -26,7 +26,6 @@ import java.util.Map;
 import org.apache.lucene.analysis.CharacterUtils;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ko.dictionary.Dictionary;
-import org.apache.lucene.analysis.ko.dictionary.SimpleDictionary;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;

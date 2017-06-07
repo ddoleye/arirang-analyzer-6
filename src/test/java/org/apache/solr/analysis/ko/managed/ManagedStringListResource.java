@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko.managed;
+package org.apache.solr.analysis.ko.managed;
 
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -31,6 +31,7 @@ import org.apache.solr.rest.ManagedResourceStorage.StorageIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Deprecated
 public class ManagedStringListResource extends ManagedResource
 		implements ManagedResource.ChildResourceSupport {
 	public static final String JSON_FIELD = "contents";
