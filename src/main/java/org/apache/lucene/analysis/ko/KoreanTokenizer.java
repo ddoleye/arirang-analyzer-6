@@ -18,242 +18,258 @@ package org.apache.lucene.analysis.ko;
  */
 
 import java.io.IOException;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.lucene.analysis.CharacterUtils;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ko.dictionary.Dictionary;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
+import org.apache.lucene.analysis.util.CharacterUtils;
 import org.apache.lucene.util.AttributeFactory;
 
 public final class KoreanTokenizer extends Tokenizer {
 
-    private int offset = 0, bufferIndex = 0, dataLen = 0, finalOffset = 0;
-    private static final int MAX_WORD_LEN = 255;
-    private static final int IO_BUFFER_SIZE = 4096;
+	private int offset = 0, bufferIndex = 0, dataLen = 0, finalOffset = 0;
+	private static final int MAX_WORD_LEN = 255;
+	private static final int IO_BUFFER_SIZE = 4096;
 
-    private final CharacterUtils.CharacterBuffer ioBuffer = CharacterUtils.newCharacterBuffer(IO_BUFFER_SIZE);
+	private final CharacterUtils.CharacterBuffer ioBuffer = CharacterUtils
+			.newCharacterBuffer(IO_BUFFER_SIZE);
 
-    private static Map<Integer,Integer> pairmap = new HashMap<Integer,Integer>();
+	private static Map<Integer, Integer> pairmap = new HashMap<Integer, Integer>();
 
-    static {
-        pairmap.put(34,34);// ""
-        pairmap.put(39,39);// ''
-        pairmap.put(40,41);// ()
-        pairmap.put(60,62);// <>
-        pairmap.put(91,93);// []
-        pairmap.put(123,125);// {}
-        pairmap.put(65288,65289);// ‘’
-        pairmap.put(8216,8217);// ‘’
-        pairmap.put(8220,8221);// “”
-    }
+	static {
+		pairmap.put(34, 34);// ""
+		pairmap.put(39, 39);// ''
+		pairmap.put(40, 41);// ()
+		pairmap.put(60, 62);// <>
+		pairmap.put(91, 93);// []
+		pairmap.put(123, 125);// {}
+		pairmap.put(65288, 65289);// ‘’
+		pairmap.put(8216, 8217);// ‘’
+		pairmap.put(8220, 8221);// “”
+	}
 
-    private List<Integer> pairstack = new ArrayList<Integer>();
+	private List<Integer> pairstack = new ArrayList<Integer>();
 
-    public static final String TYPE_KOREAN = "korean";
-    public static final String TYPE_WORD = "word";
-    public static final String TYPE_SIMBOL = "symbol";
+	public static final String TYPE_KOREAN = "korean";
+	public static final String TYPE_WORD = "word";
+	public static final String TYPE_SIMBOL = "symbol";
 
-    // this tokenizer generates three attributes:
-    // term offset, positionIncrement and type
-    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-    private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
-    private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-    private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
-    
+	// this tokenizer generates three attributes:
+	// term offset, positionIncrement and type
+	private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+	private final PositionIncrementAttribute posIncrAtt = addAttribute(
+			PositionIncrementAttribute.class);
+	private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
+	private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
+
 	private Dictionary dictionary;
-	
-    public KoreanTokenizer() {
-    }
 
-    public KoreanTokenizer(AttributeFactory factory, Dictionary dictionary) {
-        super(factory);
-        this.dictionary = dictionary;
-    }
+	public KoreanTokenizer(AttributeFactory factory, Reader reader, Dictionary dictionary) {
+		super(factory, reader);
+		this.dictionary = dictionary;
+	}
 
-    @Override
-    public final boolean incrementToken() throws IOException {
+	@Override
+	public final boolean incrementToken() throws IOException {
 
-        clearAttributes();
-        char[] buffer = termAtt.buffer();
+		clearAttributes();
+		char[] buffer = termAtt.buffer();
 
-        int length = 0;
-        int start = -1; // this variable is always initialized
-        int end = -1;
-        int pos = posIncrAtt.getPositionIncrement();
-        
-        while (true) {
-            if (bufferIndex >= dataLen) {
-                offset += dataLen;
-                CharacterUtils.fill(ioBuffer, input); // read supplementary char aware with CharacterUtils
-                if (ioBuffer.getLength() == 0) {
-                    dataLen = 0; // so next offset += dataLen won't decrement offset
-                    if (length > 0) {
-                        break;
-                    } else {
-                        finalOffset = correctOffset(offset);
-                        return false;
-                    }
-                }
-                dataLen = ioBuffer.getLength();
-                bufferIndex = 0;
-            }
+		int length = 0;
+		int start = -1; // this variable is always initialized
+		int end = -1;
+		int pos = posIncrAtt.getPositionIncrement();
 
-            // use CharacterUtils here to support < 3.1 UTF-16 code unit behavior if the char based methods are gone
-            final int c = Character.codePointAt(ioBuffer.getBuffer(), bufferIndex, ioBuffer.getLength());
-            final int charCount = Character.charCount(c);
-            bufferIndex += charCount;
+		while (true) {
+			if (bufferIndex >= dataLen) {
+				offset += dataLen;
+				CharacterUtils.getInstance().fill(ioBuffer, input); // read supplementary char
+														// aware with
+														// CharacterUtils
+				if (ioBuffer.getLength() == 0) {
+					dataLen = 0; // so next offset += dataLen won't decrement
+									// offset
+					if (length > 0) {
+						break;
+					} else {
+						finalOffset = correctOffset(offset);
+						return false;
+					}
+				}
+				dataLen = ioBuffer.getLength();
+				bufferIndex = 0;
+			}
 
-            char inspect_c = (char)c;
-            
-            int closechar = getPairChar(c);
-           
-            if(closechar!=0 && 
-            		(pairstack.isEmpty() || 
-            				(!pairstack.isEmpty() && pairstack.get(0)!=c))) {
-            	if(start==-1) {
-            		start=offset + bufferIndex - charCount;
-            		end=start;
-            	}
-            	end += charCount;
-                length += Character.toChars(c, buffer, length); // buffer it
-                pairstack.add(0,closechar);
-                
-                break; 
-            } else if (isTokenChar(c) || 
-            		(pairstack.size()>0 && pairstack.get(0)==c)) {               // if it's a token char
-                if (length == 0) {                // start of token
-                    assert start == -1;
-                    start = offset + bufferIndex - charCount;
-                    end = start;
-                } else if (length >= buffer.length - 1) { // check if a supplementary could run out of bounds
-                    buffer = termAtt.resizeBuffer(2 + length); // make sure a supplementary fits in the buffer
-                }
-                end += charCount;
-                length += Character.toChars(c, buffer, length); // buffer it
-                
-                // delimited close character
+			// use CharacterUtils here to support < 3.1 UTF-16 code unit
+			// behavior if the char based methods are gone
+			final int c = Character.codePointAt(ioBuffer.getBuffer(), bufferIndex,
+					ioBuffer.getLength());
+			final int charCount = Character.charCount(c);
+			bufferIndex += charCount;
 
-                
-//                // check if next token is parenthesis.
-                if(bufferIndex<dataLen && isDelimitPosition(length, c)) {
-                    if(!pairstack.isEmpty() && pairstack.get(0)==c) {
-                    	pairstack.remove(0);
-                    }
-                	break;
-                }
-                
-                if(!pairstack.isEmpty() && pairstack.get(0)==c) {
-                	pairstack.remove(0);
-                }
-                
-                if (length >= MAX_WORD_LEN)
-                    break; // buffer overflow! make sure to check for >= surrogate pair could break == test
-            } else if (length > 0) {           // at non-Letter w/ chars
-                break;
-            }// return 'em
-            
-        }
+			char inspect_c = (char) c;
 
-        String type = TokenUtilities.getType(buffer, length);
+			int closechar = getPairChar(c);
 
-        termAtt.setLength(length);
-        assert start != -1;
-        offsetAtt.setOffset(correctOffset(start), finalOffset = correctOffset(end));
-        typeAtt.setType(type);
-        return true;
-    }
+			if (closechar != 0
+					&& (pairstack.isEmpty() || (!pairstack.isEmpty() && pairstack.get(0) != c))) {
+				if (start == -1) {
+					start = offset + bufferIndex - charCount;
+					end = start;
+				}
+				end += charCount;
+				length += Character.toChars(c, buffer, length); // buffer it
+				pairstack.add(0, closechar);
+
+				break;
+			} else if (isTokenChar(c) || (pairstack.size() > 0 && pairstack.get(0) == c)) { // if
+																							// it's
+																							// a
+																							// token
+																							// char
+				if (length == 0) { // start of token
+					assert start == -1;
+					start = offset + bufferIndex - charCount;
+					end = start;
+				} else if (length >= buffer.length - 1) { // check if a
+															// supplementary
+															// could run out of
+															// bounds
+					buffer = termAtt.resizeBuffer(2 + length); // make sure a
+																// supplementary
+																// fits in the
+																// buffer
+				}
+				end += charCount;
+				length += Character.toChars(c, buffer, length); // buffer it
+
+				// delimited close character
+
+				// // check if next token is parenthesis.
+				if (bufferIndex < dataLen && isDelimitPosition(length, c)) {
+					if (!pairstack.isEmpty() && pairstack.get(0) == c) {
+						pairstack.remove(0);
+					}
+					break;
+				}
+
+				if (!pairstack.isEmpty() && pairstack.get(0) == c) {
+					pairstack.remove(0);
+				}
+
+				if (length >= MAX_WORD_LEN) break; // buffer overflow! make sure
+													// to check for >= surrogate
+													// pair could break == test
+			} else if (length > 0) { // at non-Letter w/ chars
+				break;
+			} // return 'em
+
+		}
+
+		String type = TokenUtilities.getType(buffer, length);
+
+		termAtt.setLength(length);
+		assert start != -1;
+		offsetAtt.setOffset(correctOffset(start), finalOffset = correctOffset(end));
+		typeAtt.setType(type);
+		return true;
+	}
 
 	/**
 	 * @return
 	 */
 	private boolean isDelimitPosition(int length, int c) {
-		if((bufferIndex>=dataLen) ||
-				(length==1 && !pairstack.isEmpty() && pairstack.get(0)==c)) return true;
-		
-		int next_c = Character.codePointAt(ioBuffer.getBuffer(), bufferIndex, ioBuffer.getLength());
-		if(isTokenChar(next_c)) return false;
-		
-		if(pairstack.size()==0) return true;
-		
-		int next_closechar = getPairChar(next_c);
-		if(next_closechar!=0 && pairstack.get(0)!=next_closechar) 
+		if ((bufferIndex >= dataLen)
+				|| (length == 1 && !pairstack.isEmpty() && pairstack.get(0) == c))
 			return true;
-		
+
+		int next_c = Character.codePointAt(ioBuffer.getBuffer(), bufferIndex, ioBuffer.getLength());
+		if (isTokenChar(next_c)) return false;
+
+		if (pairstack.size() == 0) return true;
+
+		int next_closechar = getPairChar(next_c);
+		if (next_closechar != 0 && pairstack.get(0) != next_closechar) return true;
+
 		int size = pairstack.size();
-		if((ioBuffer.getLength()-bufferIndex)<size) size = ioBuffer.getLength()-bufferIndex;
-		
-		if(next_c!=pairstack.get(0)) return false; // if next character is not close parenthesis
-		
-		for(int i=1;i<size;i++) {
-			next_c = Character.codePointAt(ioBuffer.getBuffer(), bufferIndex+i, ioBuffer.getLength());
-			if(next_c!=pairstack.get(i)) return true;
+		if ((ioBuffer.getLength() - bufferIndex) < size) size = ioBuffer.getLength() - bufferIndex;
+
+		if (next_c != pairstack.get(0)) return false; // if next character is
+														// not close parenthesis
+
+		for (int i = 1; i < size; i++) {
+			next_c = Character.codePointAt(ioBuffer.getBuffer(), bufferIndex + i,
+					ioBuffer.getLength());
+			if (next_c != pairstack.get(i)) return true;
 		}
 
-		int start = bufferIndex+size;
+		int start = bufferIndex + size;
 		int end = Math.min(ioBuffer.getLength(), start + 2);
-		
+
 		boolean hasParticle = false;
-		for(int i=start;i<end;i++) {
+		for (int i = start; i < end; i++) {
 			int space_c = Character.codePointAt(ioBuffer.getBuffer(), i, ioBuffer.getLength());
-			
-			if(space_c==32) { // 32 is space ascii code
-				if(i==start)
+
+			if (space_c == 32) { // 32 is space ascii code
+				if (i == start)
 					return true;
 				else
 					return false;
 			}
-			
-			char[] feature =  dictionary.getFeature((char)space_c);
-			
-			if(i==start && !(feature[Dictionary.IDX_JOSA1]=='1' || feature[Dictionary.IDX_EOMI1]=='1')) {
+
+			char[] feature = dictionary.getFeature((char) space_c);
+
+			if (i == start && !(feature[Dictionary.IDX_JOSA1] == '1'
+					|| feature[Dictionary.IDX_EOMI1] == '1')) {
 				return true;
-			} else if(i==start+1 && !(feature[Dictionary.IDX_JOSA2]=='1' || feature[Dictionary.IDX_EOMI2]=='1')) {
+			} else if (i == start + 1 && !(feature[Dictionary.IDX_JOSA2] == '1'
+					|| feature[Dictionary.IDX_EOMI2] == '1')) {
 				return true;
-			} 
-			
+			}
+
 			hasParticle = true;
 		}
 
 		return !hasParticle;
 	}
-    
-    private boolean isTokenChar(int c) {
-        if(Character.isLetterOrDigit(c) || isPreserveSymbol((char)c)) return true;
-        return false;
-    }
 
-    private int getPairChar(int c) {
-        Integer p = pairmap.get(c);
-        return p==null ? 0 : p;
-    }
+	private boolean isTokenChar(int c) {
+		if (Character.isLetterOrDigit(c) || isPreserveSymbol((char) c)) return true;
+		return false;
+	}
 
+	private int getPairChar(int c) {
+		Integer p = pairmap.get(c);
+		return p == null ? 0 : p;
+	}
 
-    private boolean isPreserveSymbol(char c) {
-        return (c=='#' || c=='+' || c=='-' || c=='/' || c=='·' || c == '&' || c == '_');
-    }
+	private boolean isPreserveSymbol(char c) {
+		return (c == '#' || c == '+' || c == '-' || c == '/' || c == '·' || c == '&' || c == '_');
+	}
 
-    @Override
-    public final void end() throws IOException {
-        super.end();
-        // set final offset
-        offsetAtt.setOffset(finalOffset, finalOffset);
-    }
+	@Override
+	public final void end() throws IOException {
+		super.end();
+		// set final offset
+		offsetAtt.setOffset(finalOffset, finalOffset);
+	}
 
-    @Override
-    public void reset() throws IOException {
-        super.reset();
-        bufferIndex = 0;
-        offset = 0;
-        dataLen = 0;
-        finalOffset = 0;
-        ioBuffer.reset(); // make sure to reset the IO buffer!!
-    }
+	@Override
+	public void reset() throws IOException {
+		super.reset();
+		bufferIndex = 0;
+		offset = 0;
+		dataLen = 0;
+		finalOffset = 0;
+		ioBuffer.reset(); // make sure to reset the IO buffer!!
+	}
 
 }

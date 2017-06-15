@@ -108,8 +108,8 @@ public class TestKoreanTokenizerFactory extends SolrTestCaseJ4 {
 	}
 
 	private TokenStream tokenizerK(String s) {
-		Tokenizer input = kt.create();
-		input.setReader(new StringReader(s));
+		Tokenizer input = kt.create(new StringReader(s));
+		// input.setReader();
 		return input;
 	}
 
@@ -126,7 +126,7 @@ public class TestKoreanTokenizerFactory extends SolrTestCaseJ4 {
 	}
 
 	private TokenStream forIndex(String s) {
-		Tokenizer tokenizer = kt.create();
+		Tokenizer tokenizer = kt.create(new StringReader(s));
 		TokenStream stream = lc.create(tokenizer);
 		stream = kf.create(stream);
 		stream = hmf.create(stream);
@@ -136,7 +136,6 @@ public class TestKoreanTokenizerFactory extends SolrTestCaseJ4 {
 		stream = epf.create(stream);
 		stream = psf.create(stream);
 		stream = rdt.create(stream);
-		tokenizer.setReader(new StringReader(s));
 		return stream;
 	}
 
@@ -150,5 +149,7 @@ public class TestKoreanTokenizerFactory extends SolrTestCaseJ4 {
 	public void testKoreanFilter() throws IOException {
 		assertFilter("한국을 빛낸 100명의 위인들", "한국을", "한국", "빛낸", "100명의", "100", "명의", "위인들", "위"); // 위인?
 		analyze("C++ 프로그래밍 바이블", "C++", "프로그래밍", "바이블");
+
+		analyze("신경학회", "신경", "학회");
 	}
 }

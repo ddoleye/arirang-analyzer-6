@@ -1,5 +1,7 @@
 package org.apache.lucene.analysis.ko;
 
+import java.io.Reader;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -45,7 +47,7 @@ public class KoreanTokenizerFactory extends TokenizerFactory {
 	}
 
 	@Override
-	public Tokenizer create(AttributeFactory factory) {
-		return new KoreanTokenizer(factory, dictionary);
+	public Tokenizer create(AttributeFactory factory, Reader reader) {
+		return new KoreanTokenizer(factory, reader, dictionary);
 	}
 }
